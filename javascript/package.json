@@ -1,0 +1,29 @@
+{
+  "name": "local-https-dev",
+  "version": "0.0.0",
+  "description": "Run HTTPS for local development",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tjamet/local-https-dev.git"
+  },
+  "keywords": [
+    "https",
+    "dev",
+    "security",
+    "test"
+  ],
+  "author": "Thibault Jamet",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/tjamet/local-https-dev/issues"
+  },
+  "homepage": "https://github.com/tjamet/local-https-dev#readme",
+  "dependencies": {
+    "atob": "^2.1.0",
+    "node-fetch": "^2.1.2"
+  }
+}
