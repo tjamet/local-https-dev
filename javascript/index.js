@@ -1,13 +1,36 @@
 const fetch = require('node-fetch');
 const atob = require('atob');
+const btoa = require('btoa');
+const netrc = require('netrc');
+const url = require('url');
 
 function getCertificate(host, domain){
+    var headers = {};
+
+    const myNetrc = netrc();
+    hostname = new url.URL(host).hostname;
+    if (myNetrc[hostname] != null) {
+        var auth = "";
+        if (myNetrc[hostname].user){
+            auth += myNetrc[hostname].user;
+        }
+        auth += ":";
+        if (myNetrc[hostname].password){
+            auth += myNetrc[hostname].password;
+        }
+        headers.Authorization = "Basic " + btoa(auth);
+    }
+
     return new Promise(function(resolve, reject){
-        fetch(host+"/json/"+domain)
+        fetch(host+"/json/"+domain, {headers})
         .then(response => {
-          response.json()
-          .then(json => resolve(json))
-          .catch(error=>reject(error));
+            if (response.status != 200){
+                reject("Failed to get certificate, unexpected status: " + response.status)
+            } else {
+                response.json()
+                .then(json => resolve(json))
+                .catch(error=>reject(error));
+          }
         })
         .catch(error => {
           reject(error);

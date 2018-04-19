@@ -12,10 +12,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/jdxcode/netrc"
 	"github.com/tjamet/local-https-dev/server/acme"
 	"github.com/urfave/cli"
 )
@@ -88,7 +91,23 @@ func ListenAndServeTLSKeyPair(addr string, cert tls.Certificate,
 
 func getCertificate(providerURL string, domain ...string) (tls.Certificate, error) {
 	body := bytes.NewReader([]byte(strings.Join(domain, " ")))
-	response, err := http.Post(providerURL, "text", body)
+	u, err := url.Parse(providerURL)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	usr, err := user.Current()
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	n, err := netrc.Parse(filepath.Join(usr.HomeDir, ".netrc"))
+	if err == nil {
+		machine := n.Machine(u.Hostname())
+		if machine != nil {
+			u.User = url.UserPassword(machine.Get("login"), machine.Get("password"))
+		}
+	}
+
+	response, err := http.Post(u.String(), "text", body)
 	if err != nil {
 		return tls.Certificate{}, err
 	}

@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -10,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -69,7 +73,6 @@ func run(c *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve cache path")
 	}
-	fmt.Println(path)
 	client, err := acme.New(
 		log.New(os.Stderr, "legolog: ", log.LstdFlags),
 		c.String("email"),
@@ -82,6 +85,59 @@ func run(c *cli.Context) error {
 	}
 
 	r := gin.Default()
+	if !c.Bool("disable-authentication") {
+		keyPath, err := homedir.Expand(c.String("key"))
+		if err != nil {
+			return errors.Wrap(err, "failed to retrieve key path")
+		}
+		key, err := ioutil.ReadFile(keyPath)
+		if err != nil {
+			return err
+		}
+		block, _ := pem.Decode([]byte(key))
+		var publicKey interface{}
+		if block == nil {
+			fmt.Printf("Failed to parse PEM for path %s, using raw data as key\n", keyPath)
+			publicKey = key
+		} else {
+			publicKey, err = x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				return err
+			}
+		}
+		r.Use(func(c *gin.Context) {
+			auth := strings.SplitN(c.GetHeader("Authorization"), " ", 2)
+			if len(auth) != 2 || auth[0] != "Basic" {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			payload, err := base64.StdEncoding.DecodeString(auth[1])
+			if err != nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			pair := strings.SplitN(string(payload), ":", 2)
+			if len(auth) != 2 {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			tokenClaims := jwt.StandardClaims{}
+			_, err = jwt.ParseWithClaims(pair[1], &tokenClaims, func(token *jwt.Token) (interface{}, error) {
+				return publicKey, nil
+			})
+			if err != nil {
+				fmt.Println(err)
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			err = tokenClaims.Valid()
+			if err != nil {
+				fmt.Println(err)
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+		})
+	}
 	r.POST("/haproxy", func(gc *gin.Context) {
 		crt, err := getCertificate(c, client, getPostDomains(gc)...)
 		replyHaproxyCertificates(gc, crt, err)
@@ -103,7 +159,7 @@ func run(c *cli.Context) error {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "local-https-server"
+	app.Name = "local-https-dev-server"
 	app.Usage = "A simple HTTP server to serve certificates"
 
 	app.Version = "0.0.0"
@@ -144,6 +200,14 @@ func main() {
 			Name:  "path",
 			Value: "~/.dev-acme",
 			Usage: "Directory where to store cache (let's encrypt account and certificates).",
+		},
+		cli.StringFlag{
+			Name:  "key",
+			Usage: "The path to the JWT signing key.",
+		},
+		cli.BoolFlag{
+			Name:  "disable-authentication",
+			Usage: "Disables authentication",
 		},
 		cli.BoolFlag{
 			Name:  "accept-tos, a",
