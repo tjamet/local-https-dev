@@ -99,6 +99,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/jdxcode/netrc"
+  packages = ["."]
+  revision = "e1a19c977509b96a5c76996dec63ab5aac67c38c"
+
+[[projects]]
+  branch = "master"
   name = "github.com/jinzhu/copier"
   packages = ["."]
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
@@ -279,6 +285,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d041d43af1b86e18568d19598bf282fcb2d4caeff42e0a734c2411303e90c1e6"
+  inputs-digest = "835d14fdd30e64260562b19f2a4809ef660e812349b8130eb04e008fb3ecefa9"
   solver-name = "gps-cdcl"
   solver-version = 1

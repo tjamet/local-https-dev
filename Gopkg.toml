@@ -24,3 +24,7 @@
 [[constraint]]
   branch = "acmev2"
   name = "github.com/xenolf/lego"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jdxcode/netrc"
