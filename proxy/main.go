@@ -121,20 +121,14 @@ func newProxyHandler(client *http.Client, backend *url.URL) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		// http server drops the Host header
-		// https://github.com/golang/go/blob/c0547476f342665514904cf2581a62135d2366c3/src/net/http/server.go#L981
-		// But Host is set from Host header only if not in request URL
-		// https://github.com/golang/go/blob/c0547476f342665514904cf2581a62135d2366c3/src/net/http/request.go#L990
-		if r.Host != "" && r.URL.Host == "" {
-			req.Host = r.Host
-		}
+		req.Host = r.Host
 		// r.RequestURI contains the full value of GET http://host/path?query HTTP/1.1
 		// When sending the request, request.URL.RequestURI() is used to fill GET <what> HTTP/1.1
 		// Although this does not work when using proxy:
 		// https://github.com/golang/go/blob/c0547476f342665514904cf2581a62135d2366c3/src/net/http/request.go#L524
 		// This behaviour is achieved by providing only Opaque:
 		// https://github.com/golang/go/blob/c0547476f342665514904cf2581a62135d2366c3/src/net/url/url.go#L1002
-		req.URL.Opaque = r.RequestURI
+		req.URL.Opaque = r.URL.RequestURI()
 
 		// Implement the X-Forwarded headers as defined in
 		// https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/x-forwarded-headers.html
