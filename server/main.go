@@ -46,6 +46,9 @@ func getCertificate(c *cli.Context, client *acme.Client, domains ...string) (*ac
 				wCard = append(wCard, w)
 			}
 		}
+		if len(wCard) > c.Int("maxDomains") {
+			return nil, fmt.Errorf("request exceeded the maximum number of accepted domains")
+		}
 		for _, domain := range wCard {
 			if !strings.HasSuffix(domain, c.String("domain")) {
 				return nil, fmt.Errorf("all requested domains should end with %s", c.String("domain"))
@@ -230,6 +233,11 @@ func main() {
 			Name:  "port, p",
 			Value: 8080,
 			Usage: "The port the server should listen to.",
+		},
+		cli.UintFlag{
+			Name:  "maxDomains, n",
+			Value: 1,
+			Usage: "The maximum number of domains to include in the certificate.",
 		},
 	}
 	err := app.Run(os.Args)
