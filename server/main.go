@@ -32,14 +32,27 @@ func getPostDomains(c *gin.Context) []string {
 }
 
 func getCertificate(c *cli.Context, client *acme.Client, domains ...string) (*acme.Certificate, error) {
+	wCard := []string{}
 	if c.String("domain") != "" && domains != nil {
-		for _, domain := range domains {
+		for _, domain := range domains[:] {
+			w := "*" + domain[strings.Index(domain, "."):]
+			existing := false
+			for _, d := range wCard[:] {
+				if d == w {
+					existing = true
+				}
+			}
+			if !existing {
+				wCard = append(wCard, w)
+			}
+		}
+		for _, domain := range wCard {
 			if !strings.HasSuffix(domain, c.String("domain")) {
 				return nil, fmt.Errorf("all requested domains should end with %s", c.String("domain"))
 			}
 		}
 	}
-	return client.GetCertificate(domains...)
+	return client.GetCertificate(wCard...)
 }
 
 func replyHaproxyCertificates(c *gin.Context, certificate *acme.Certificate, err error) {
