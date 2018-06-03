@@ -215,22 +215,29 @@ func main() {
 				return http.ErrUseLastResponse
 			},
 		}
-		log.Println("Starting server on ", c.String("listen"), c.String("tls"), "on for domains", strings.Join(c.StringSlice("domain"), " "))
-		var wg sync.WaitGroup
-		for _, host := range c.StringSlice("listen") {
-			wg.Add(1)
-			go func(host string) {
-				err := http.ListenAndServe(host, newProxyHandler(&proxyClient, backend))
-				wg.Done()
-				if err != nil {
-					log.Fatal(err)
-				}
-			}(host)
+		tlsListen := c.StringSlice("tls")
+		if len(tlsListen) == 0 {
+			tlsListen = append(tlsListen, ":443")
 		}
-		for _, host := range c.StringSlice("tls") {
+		log.Println("Starting server on ", strings.Join(tlsListen, " "), "on for domains", strings.Join(c.StringSlice("domain"), " "))
+		var wg sync.WaitGroup
+		for _, host := range tlsListen {
 			wg.Add(1)
 			go func(host string) {
+				if !strings.Contains(host, ":") {
+					if strings.Contains(host, ".") {
+						host = host + ":443"
+					} else {
+						host = ":" + host
+					}
+				}
 				err := ListenAndServeTLSKeyPair(host, cert, newProxyHandler(&proxyClient, backend))
+				if strings.Contains(err.Error(), "permission denied") && len(c.StringSlice("tls")) == 0 {
+					newHost := strings.Replace(host, ":443", ":4433", 1)
+					log.Println("Failed to bind on ", host, "retrying on", newHost)
+					host = newHost
+				}
+				err = ListenAndServeTLSKeyPair(host, cert, newProxyHandler(&proxyClient, backend))
 				wg.Done()
 				if err != nil {
 					log.Fatal(err)
@@ -247,15 +254,12 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "server, s",
-			Usage: "The server serving TLS certificates over HTTP",
+			Value: "https://api.xtls.io",
+			Usage: "The server serving TLS certificates over HTTP (default: api.xtls.io)",
 		},
 		cli.StringFlag{
 			Name:  "backend, b",
 			Usage: "The backend to serve requests from",
-		},
-		cli.StringSliceFlag{
-			Name:  "listen, l",
-			Usage: "The port to listen on without TLS",
 		},
 		cli.StringSliceFlag{
 			Name:  "tls, t",
