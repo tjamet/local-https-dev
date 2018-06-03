@@ -90,6 +90,9 @@ func ListenAndServeTLSKeyPair(addr string, cert tls.Certificate,
 }
 
 func getCertificate(providerURL string, domain ...string) (tls.Certificate, error) {
+	if len(domain) == 0 {
+		domain = append(domain, "www.local.xtls.io")
+	}
 	body := bytes.NewReader([]byte(strings.Join(domain, " ")))
 	u, err := url.Parse(providerURL)
 	if err != nil {
@@ -249,7 +252,6 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringSliceFlag{
 			Name:  "domain, d",
-			Value: &cli.StringSlice{"www.local.xtls.io"},
 			Usage: "Add a domain to serve TLS on (default: www.local.xtls.io)",
 		},
 		cli.StringFlag{
