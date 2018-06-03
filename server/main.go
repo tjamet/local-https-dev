@@ -33,25 +33,27 @@ func getPostDomains(c *gin.Context) []string {
 
 func getCertificate(c *cli.Context, client *acme.Client, domains ...string) (*acme.Certificate, error) {
 	wCard := []string{}
+
+	for _, domain := range domains[:] {
+		w := "*" + domain[strings.Index(domain, "."):]
+		existing := false
+		for _, d := range wCard[:] {
+			if d == w {
+				existing = true
+			}
+		}
+		if !existing {
+			wCard = append(wCard, w)
+		}
+	}
+
 	if c.String("domain") != "" && domains != nil {
-		for _, domain := range domains[:] {
-			w := "*" + domain[strings.Index(domain, "."):]
-			existing := false
-			for _, d := range wCard[:] {
-				if d == w {
-					existing = true
-				}
-			}
-			if !existing {
-				wCard = append(wCard, w)
-			}
-		}
-		if len(wCard) > c.Int("maxDomains") {
-			return nil, fmt.Errorf("request exceeded the maximum number of accepted domains")
-		}
 		for _, domain := range wCard {
 			if !strings.HasSuffix(domain, c.String("domain")) {
 				return nil, fmt.Errorf("all requested domains should end with %s", c.String("domain"))
+			}
+			if strings.Count(strings.TrimSuffix(domain, c.String("domain")), ".") > c.Int("maxDomains") {
+				return nil, fmt.Errorf("request exceeded the maximum number of the %d accepted sub-domains", c.Int("maxDomains"))
 			}
 		}
 	}
@@ -348,7 +350,7 @@ func main() {
 		cli.UintFlag{
 			Name:  "maxDomains, n",
 			Value: 1,
-			Usage: "The maximum number of domains to include in the certificate.",
+			Usage: "The maximum number of sub domains to include in the certificate. Only valid with the domain option",
 		},
 	}
 	err := app.Run(os.Args)
