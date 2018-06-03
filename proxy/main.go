@@ -95,6 +95,7 @@ func getCertificate(providerURL string, domain ...string) (tls.Certificate, erro
 	if err != nil {
 		return tls.Certificate{}, err
 	}
+	u.Path = "/json"
 	usr, err := user.Current()
 	if err != nil {
 		return tls.Certificate{}, err
@@ -241,7 +242,8 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringSliceFlag{
 			Name:  "domain, d",
-			Usage: "Add a domain to serve TLS on",
+			Value: &cli.StringSlice{"www.local.xtls.io"},
+			Usage: "Add a domain to serve TLS on (default: www.local.xtls.io)",
 		},
 		cli.StringFlag{
 			Name:  "server, s",
