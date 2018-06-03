@@ -84,6 +84,50 @@ func replyJSONCertificates(c *gin.Context, certificate *acme.Certificate, err er
 	}
 }
 
+func loadSecret(path string) (interface{}, error) {
+	var key []byte
+	if strings.HasPrefix(path, "http") {
+		r, err := http.Get(path)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to retrieve key path %s", path))
+		}
+		defer r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to retrieve key path %s. Unexpected code %d", path, r.StatusCode)
+		}
+		key, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to retrieve key path %s", path))
+		}
+	} else {
+		keyPath, err := homedir.Expand(path)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to retrieve key path")
+		}
+		key, err = ioutil.ReadFile(keyPath)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("Failed to read key path %s", path))
+		}
+	}
+	block, _ := pem.Decode([]byte(key))
+	if block == nil {
+		fmt.Printf("Failed to parse PEM for path %s, using raw data as key\n", path)
+		return key, nil
+	}
+	if block.Type == "CERTIFICATE" {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to parse key certificate")
+		}
+		return cert.PublicKey, nil
+	}
+	if strings.HasSuffix(block.Type, "PUBLIC KEY") {
+		fmt.Println("bla")
+		return x509.ParsePKIXPublicKey(block.Bytes)
+	}
+	return nil, fmt.Errorf("Unsupported pem format %s, expecting CERTIFICATE or PUBLIC KEY suffix", block.Type)
+}
+
 func run(c *cli.Context) error {
 	path, err := homedir.Expand(c.String("path"))
 	if err != nil {
@@ -102,24 +146,9 @@ func run(c *cli.Context) error {
 
 	r := gin.Default()
 	if !c.Bool("disable-authentication") {
-		keyPath, err := homedir.Expand(c.String("key"))
+		publicKey, err := loadSecret(c.String("key"))
 		if err != nil {
-			return errors.Wrap(err, "failed to retrieve key path")
-		}
-		key, err := ioutil.ReadFile(keyPath)
-		if err != nil {
-			return err
-		}
-		block, _ := pem.Decode([]byte(key))
-		var publicKey interface{}
-		if block == nil {
-			fmt.Printf("Failed to parse PEM for path %s, using raw data as key\n", keyPath)
-			publicKey = key
-		} else {
-			publicKey, err = x509.ParsePKIXPublicKey(block.Bytes)
-			if err != nil {
-				return err
-			}
+			return errors.Wrap(err, "failed to load public key")
 		}
 		r.Use(func(c *gin.Context) {
 			auth := strings.SplitN(c.GetHeader("Authorization"), " ", 2)
