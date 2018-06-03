@@ -178,7 +178,7 @@ func run(c *cli.Context) error {
 			})
 			if err != nil {
 				fmt.Println(err)
-				c.AbortWithStatus(http.StatusBadRequest)
+				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 			err = tokenClaims.Valid()

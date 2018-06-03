@@ -119,6 +119,10 @@ func getCertificate(providerURL string, domain ...string) (tls.Certificate, erro
 	if err != nil {
 		return tls.Certificate{}, err
 	}
+	if response.StatusCode == http.StatusUnauthorized {
+		return tls.Certificate{}, fmt.Errorf("It seems that your authentication expired. Please visit https://api.xtls.io" +
+			" and follow the instructions to renew your authentication")
+	}
 	if response.StatusCode != 200 {
 		message := struct {
 			Message string `json:"message"`
