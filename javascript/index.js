@@ -6,6 +6,12 @@ const url = require('url');
 
 function getCertificate(host, domain){
     var headers = {};
+    if (domain==nil) {
+        domain = "www.local.xtls.io";
+    }
+    if (host==nil) {
+        host = "https://api.xtls.io";
+    }
 
     const myNetrc = netrc();
     hostname = new url.URL(host).hostname;
