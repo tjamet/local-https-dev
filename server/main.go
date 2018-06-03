@@ -122,7 +122,6 @@ func loadSecret(path string) (interface{}, error) {
 		return cert.PublicKey, nil
 	}
 	if strings.HasSuffix(block.Type, "PUBLIC KEY") {
-		fmt.Println("bla")
 		return x509.ParsePKIXPublicKey(block.Bytes)
 	}
 	return nil, fmt.Errorf("Unsupported pem format %s, expecting CERTIFICATE or PUBLIC KEY suffix", block.Type)
