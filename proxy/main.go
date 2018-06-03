@@ -115,12 +115,20 @@ func getCertificate(providerURL string, domain ...string) (tls.Certificate, erro
 	if err != nil {
 		return tls.Certificate{}, err
 	}
-	if response.StatusCode != 200 {
-		return tls.Certificate{}, fmt.Errorf("failed to get certificate: %s", response.Status)
-	}
 	b, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return tls.Certificate{}, err
+	}
+	if response.StatusCode != 200 {
+		message := struct {
+			Message string `json:"message"`
+		}{}
+		err := json.Unmarshal(b, &message)
+		fmt.Println(err)
+		if err != nil || message.Message == "" {
+			return tls.Certificate{}, fmt.Errorf("failed to get certificate: %s", response.Status)
+		}
+		return tls.Certificate{}, fmt.Errorf("failed to get certificate: %s", message.Message)
 	}
 
 	certificate := acme.Certificate{}

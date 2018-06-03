@@ -77,6 +77,11 @@ func replyHaproxyCertificates(c *gin.Context, certificate *acme.Certificate, err
 func replyJSONCertificates(c *gin.Context, certificate *acme.Certificate, err error) {
 	if !c.IsAborted() {
 		if err != nil {
+			c.JSON(http.StatusInternalServerError, struct {
+				Message string `json:"message"`
+			}{
+				Message: err.Error(),
+			})
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
