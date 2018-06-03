@@ -202,6 +202,82 @@ func run(c *cli.Context) error {
 	return http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", c.Uint("port")), r)
 }
 
+// this is not recommended but prevents from re-writing lego
+func dockerSecretsToEnv() {
+	// generater helper cat README.md  | grep td | sed 's:([^)]*)::g' | sed -e 's:.*<td>::g' -e 's:</td>::g' -e 's/<br>/\'$'\n/g' | grep -v ' \t' | grep -v -E '[a-z]' | sed 's:\(.*\):"\1",:g' | grep -v '""'
+	for _, key := range []string{
+		"AURORA_USER_ID",
+		"AURORA_KEY",
+		"AURORA_ENDPOINT",
+		"AZURE_CLIENT_ID",
+		"AZURE_CLIENT_SECRET",
+		"AZURE_SUBSCRIPTION_ID",
+		"AZURE_TENANT_ID",
+		"CLOUDFLARE_EMAIL",
+		"CLOUDFLARE_API_KEY",
+		"CLOUDXNS_API_KEY",
+		"CLOUDXNS_SECRET_KEY",
+		"DO_AUTH_TOKEN",
+		"DNSIMPLE_EMAIL",
+		"DNSIMPLE_OAUTH_TOKEN",
+		"DNSMADEEASY_API_KEY",
+		"DNSMADEEASY_API_SECRET",
+		"DNSMADEEASY_SANDBOX ",
+		"DNSPOD_API_KEY",
+		"DYN_CUSTOMER_NAME",
+		"DYN_USER_NAME",
+		"DYN_PASSWORD",
+		"GANDI_API_KEY",
+		"GANDIV5_API_KEY",
+		"GODADDY_API_KEY",
+		"GODADDY_API_SECRET",
+		"GCE_PROJECT",
+		"GCE_DOMAIN",
+		"GOOGLE_APPLICATION_CREDENTIALS",
+		"AWS_ACCESS_KEY_ID",
+		"AWS_SECRET_ACCESS_KEY",
+		"AWS_SESSION_TOKEN",
+		"DNS_ZONE",
+		"LINODE_API_KEY",
+		"NAMECHEAP_API_USER",
+		"NAMECHEAP_API_KEY",
+		"NS1_API_KEY",
+		"NAMECOM_USERNAME",
+		"NAMECOM_API_TOKEN",
+		"OVH",
+		"OVH_ENDPOINT",
+		"OVH_APPLICATION_KEY",
+		"OVH_APPLICATION_SECRET",
+		"OVH_CONSUMER_KEY",
+		"OTC_DOMAIN_NAME",
+		"OTC_USER_NAME",
+		"OTC_PASSWORD",
+		"OTC_PROJECT_NAME",
+		"OTC_IDENTITY_ENDPOINT ",
+		"PDNS_API_URL",
+		"PDNS_API_KEY",
+		"RACKSPACE_USER",
+		"RACKSPACE_API_KEY",
+		"RFC2136_NAMESERVER",
+		"RFC2136_TSIG_ALGORITHM",
+		"RFC2136_TSIG_KEY",
+		"RFC2136_TSIG_SECRET",
+		"AWS_ACCESS_KEY_ID",
+		"AWS_SECRET_ACCESS_KEY",
+		"VULTR_API_KEY",
+	}[:] {
+		file, err := os.Open("/run/secrets/" + key)
+		if err == nil {
+			defer file.Close()
+			content, err := ioutil.ReadAll(file)
+			if err == nil {
+				log.Printf("Populating env variable %s from docker secrets", key)
+				os.Setenv(key, strings.Trim(string(content), " \t\n"))
+			}
+		}
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "local-https-dev-server"
@@ -210,6 +286,8 @@ func main() {
 	app.Version = "0.0.0"
 
 	app.Before = func(c *cli.Context) error {
+
+		dockerSecretsToEnv()
 		if !c.Bool("accept-tos") {
 			return fmt.Errorf("You need to accept Let's Encrypt Terms Of Service to run this tool")
 		}
